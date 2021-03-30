@@ -18,7 +18,7 @@ import (
 
 const (
 	MinCap = 8
-	MaxWait = 0
+	MaxWait = 100
 )
 
 type IQueue interface {
