@@ -9,7 +9,9 @@ make test
 
 ## how to use 
 q := NewQueue(1024)
+
 q.put(xxx)
+
 q.get(yyy)
 
 put & get both can be failed, so caller must check and do try thing
