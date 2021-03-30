@@ -10,9 +10,17 @@ make test
 ## how to use 
 q := NewQueue(1024)
 
-q.put(xxx)
+ok, cnt := qq.Put(val) 
 
-q.get(yyy)
+if ok {
+
+}
+
+val, ok, cnt := qq.Get()
+
+if ok {
+
+}
 
 put & get both can be failed, so caller must check and do try thing
 
