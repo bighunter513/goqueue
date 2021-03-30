@@ -17,6 +17,7 @@ import (
 
 const (
 	MinCap = 8
+	MaxWait = 100
 )
 
 type IQueue interface {
@@ -93,6 +94,7 @@ func (q *LFQueue) Count() uint32 {
 
 // Put May failed if lock slot failed or full
 // caller should retry if failed
+// should not put nil for normal logic
 func (q *LFQueue) Put(val interface{}) (ok bool, count uint32) {
 	getPos := q.getPos.Load()
 	putPos := q.putPos.Load()
@@ -112,6 +114,7 @@ func (q *LFQueue) Put(val interface{}) (ok bool, count uint32) {
 	}
 
 	var cache *slot = &q.carrier[posNext & q.capMod]
+	var waitCounter = 0
 	for {
 		getID := cache.getID.Load()
 		putID := cache.putID.Load()
@@ -125,6 +128,15 @@ func (q *LFQueue) Put(val interface{}) (ok bool, count uint32) {
 			// 所以就先让出cpu，等待下次调度
 			// 为啥不直接返回？ 因为位置已经占了，其他线程不会占用这个地方了
 			// fmt.Printf("put too quick: getID %v, putID %v and putPosNext: %v\n", getID, putID, posNext)
+			waitCounter++
+			if waitCounter > MaxWait {
+				// 实在put不进去，一直没有消费, 那就扔一条吧, 这里主要是防止调用进程死等, 理论上极小概率到这里
+				val, ok, cnt := q.Get()
+				if ok {
+					fmt.Printf("throw val: %v away, cnt: %v", val, cnt)
+					continue
+				}
+			}
 			runtime.Gosched()
 		}
 
@@ -151,6 +163,7 @@ func (q *LFQueue) Get() (val interface{}, ok bool, count uint32) {
 
 	cache := &q.carrier[getPosNext & q.capMod]
 
+	var waitCounter = 0
 	for {
 		getID := cache.getID.Load()
 		putID := cache.putID.Load()
@@ -164,6 +177,15 @@ func (q *LFQueue) Get() (val interface{}, ok bool, count uint32) {
 			// 此时，这个位置等于已经被他预约了，但是却没数据，需要等待下次put了数据之后，才能重新取到
 			// 所以就先让出cpu，等待下次调度
 			// fmt.Printf("get too quick: getID %v, putID %v and getPosNext: %v\n", getID, putID, getPosNext)
+			waitCounter++
+			if waitCounter > MaxWait {
+				// 实在get不到，一直没有put, 那就put一个假数据吧, 这里主要是防止调用进程死等, 理论上极小概率到这里
+				ok, _ := q.Put(nil)
+				if ok {
+					fmt.Printf("put nil to escape\n")
+					continue
+				}
+			}
 			runtime.Gosched()
 		}
 	}
