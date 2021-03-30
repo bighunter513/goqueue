@@ -21,7 +21,7 @@ import (
 
 // go test -v -race -run TestLFQueue
 func TestLFQueue(t *testing.T) {
-	qq := NewQueue(8)
+	qq := NewQueue(10)
 
 	wg := &sync.WaitGroup{}
 	put := atomic.NewUint32(0)
