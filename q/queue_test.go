@@ -55,7 +55,67 @@ func TestLFQueue(t *testing.T) {
 				var wait = 0
 				for j := 0; j < workPerThread;  {
 					s1, ok, cnt := qq.Get()
+					if ok && s1 != nil {
+						get.Inc()
+						fmt.Printf("Dequeue: %s msg:%s\n", s, s1.(string))
+						wait = 0
+						j++
+					} else {
+						getFailed.Inc()
+						fmt.Printf("%v get failed, cnt: %v\n", s, cnt)
+						time.Sleep(time.Millisecond * 2)
+						wait++
+						if wait > 5 {
+							j++
+						}
+					}
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	fmt.Printf("put %v, and get %v\n", put.Load(), get.Load())
+	fmt.Printf("put failed %v, and get failed %v\n", putFailed.Load(), getFailed.Load())
+}
+
+// go test -v -race -run TestLFQueueRetry
+func TestLFQueueRetry(t *testing.T) {
+	qq := NewQueue(10)
+
+	wg := &sync.WaitGroup{}
+	put := atomic.NewUint32(0)
+	get := atomic.NewUint32(0)
+	putFailed := atomic.NewUint32(0)
+	getFailed := atomic.NewUint32(0)
+
+	var threadCount = 10
+	var workPerThread = 1000
+	for i := 0; i < threadCount; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			s := "id:" + strconv.Itoa(id)
+			if id % 2 == 0 {
+				baseWork := id * workPerThread
+				for j := 0; j < workPerThread; {
+					s1 := s + ": work" + strconv.Itoa(j + baseWork)
+					ok, cnt := qq.RetryPut(s1, 3)
 					if ok {
+						put.Inc()
+						fmt.Printf("Enqueue: %s ok, cnt %v\n", s1, cnt)
+						j++
+					} else {
+						putFailed.Inc()
+						time.Sleep(time.Millisecond)
+					}
+				}
+
+			} else {
+				var wait = 0
+				for j := 0; j < workPerThread;  {
+					s1, ok, cnt := qq.RetryGet(3)
+					if ok && s1 != nil {
 						get.Inc()
 						fmt.Printf("Dequeue: %s msg:%s\n", s, s1.(string))
 						wait = 0

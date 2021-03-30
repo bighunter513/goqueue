@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"go.uber.org/atomic"
 	"runtime"
+	"time"
 )
 
 const (
@@ -25,7 +26,10 @@ type IQueue interface {
 	Capacity()  uint32
 	Count()     uint32
 	Put(val interface{}) (ok bool, count uint32)
+	RetryPut(val interface{}, retry uint32) (ok bool, count uint32)
+
 	Get() (val interface{}, ok bool, count uint32)
+	RetryGet(retry uint32) (val interface{}, ok bool, count uint32)
 
 	Gets(values []interface{}) (gets, count uint32)
 	Puts(values []interface{}) (puts, count uint32)
@@ -193,6 +197,30 @@ func (q *LFQueue) Get() (val interface{}, ok bool, count uint32) {
 			runtime.Gosched()
 		}
 	}
+}
+
+func (q *LFQueue) RetryPut(val interface{}, retry uint32) (ok bool, count uint32) {
+	if retry == 0 {
+		return false, 0
+	}
+	ok, cnt := q.Put(val)
+	if ok || retry == 1 {
+		return ok, cnt
+	}
+	time.Sleep(time.Millisecond*3)
+	return q.RetryPut(val, retry-1)
+}
+
+func (q *LFQueue) RetryGet(retry uint32) (val interface{}, ok bool, count uint32) {
+	if retry == 0 {
+		return nil, false, 0
+	}
+	val, ok, cnt := q.Get()
+	if ok || retry == 1 {
+		return val, ok, cnt
+	}
+	time.Sleep(time.Millisecond*3)
+	return q.RetryGet(retry-1)
 }
 
 func (q *LFQueue) Gets(values []interface{}) (gets, count uint32) {
