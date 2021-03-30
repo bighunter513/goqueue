@@ -201,7 +201,7 @@ func (q *LFQueue) Get() (val interface{}, ok bool, count uint32) {
 
 func (q *LFQueue) RetryPut(val interface{}, retry uint32) (ok bool, count uint32) {
 	if retry == 0 {
-		return false, 0
+		return false, q.Count()
 	}
 	ok, cnt := q.Put(val)
 	if ok || retry == 1 {
@@ -213,7 +213,7 @@ func (q *LFQueue) RetryPut(val interface{}, retry uint32) (ok bool, count uint32
 
 func (q *LFQueue) RetryGet(retry uint32) (val interface{}, ok bool, count uint32) {
 	if retry == 0 {
-		return nil, false, 0
+		return nil, false, q.Count()
 	}
 	val, ok, cnt := q.Get()
 	if ok || retry == 1 {
