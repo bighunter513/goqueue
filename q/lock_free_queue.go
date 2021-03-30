@@ -76,7 +76,7 @@ func NewQueue(cap uint32) *LFQueue {
 }
 
 func (q *LFQueue) Info() string {
-	return fmt.Sprintf("Queue{capaciity: %v, capMod: %v, putPos: %v, getPos: %v}",
+	return fmt.Sprintf("Queue{capacity: %v, capMod: %v, putPos: %v, getPos: %v}",
 		q.capacity, q.capMod, q.putPos.Load(), q.getPos.Load())
 }
 
