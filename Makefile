@@ -3,5 +3,9 @@ all:test
 test:
 	cd q && go test -v -race
 
-.PHONY: test
+lfqueue:
+	cd q && go test -v -race -run TestLFQueue
+
+
+.PHONY: test lfqueue
 

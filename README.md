@@ -5,7 +5,9 @@ clone from https://github.com/yireyun/go-queue
 and changed little things, add some comments
 
 ## run test case
-make test
+make test ## test all cases
+
+make lfqueue ## only test lfqueue
 
 ## how to use 
 q := NewQueue(1024)

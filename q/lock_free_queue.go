@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	MinCap = 8
-	MaxWait = 100
+	MinCap = 8  // 最小队列长度，防止队列过小，竞争太激烈； 理论上越大冲突越小
+	MaxWait = 100  // 当出现饥饿竞态时，最多让出cpu的次数
 )
 
 type IQueue interface {
@@ -54,6 +54,8 @@ type LFQueue struct {
 	carrier     []slot
 }
 
+// NewQueue alloc a fixed size of cap Queue
+// and do some essential init
 func NewQueue(cap uint32) *LFQueue {
 	if cap < 1 {
 		cap = MinCap
@@ -80,16 +82,18 @@ func NewQueue(cap uint32) *LFQueue {
 	return q
 }
 
+// Info return the summary info of queue
 func (q *LFQueue) Info() string {
 	return fmt.Sprintf("Queue{capacity: %v, capMod: %v, putPos: %v, getPos: %v}",
 		q.capacity, q.capMod, q.putPos.Load(), q.getPos.Load())
 }
 
+// Capacity max capacity
 func (q *LFQueue) Capacity() uint32 {
 	return q.capacity
 }
 
-
+// Count Current count, maybe changed every moment
 func (q *LFQueue) Count() uint32 {
 	getPos := q.getPos.Load()
 	putPos := q.putPos.Load()
@@ -199,6 +203,8 @@ func (q *LFQueue) Get() (val interface{}, ok bool, count uint32) {
 	}
 }
 
+// RetryPut Retry max retry times to put val to queue
+// Each interval will sleep a short time, current is 3 millisecond
 func (q *LFQueue) RetryPut(val interface{}, retry uint32) (ok bool, count uint32) {
 	if retry == 0 {
 		return false, q.Count()
@@ -211,6 +217,8 @@ func (q *LFQueue) RetryPut(val interface{}, retry uint32) (ok bool, count uint32
 	return q.RetryPut(val, retry-1)
 }
 
+// RetryGet Retry max retry times to get val from queue
+// Each interval will sleep a short time, current is 3 millisecond
 func (q *LFQueue) RetryGet(retry uint32) (val interface{}, ok bool, count uint32) {
 	if retry == 0 {
 		return nil, false, q.Count()
@@ -223,6 +231,8 @@ func (q *LFQueue) RetryGet(retry uint32) (val interface{}, ok bool, count uint32
 	return q.RetryGet(retry-1)
 }
 
+// Gets one time get at most N val from queue
+// Storage Array values should be init to fixed size
 func (q *LFQueue) Gets(values []interface{}) (gets, count uint32) {
 	getPos := q.getPos.Load()
 	putPos := q.putPos.Load()
@@ -262,6 +272,8 @@ func (q *LFQueue) Gets(values []interface{}) (gets, count uint32) {
 	return getCnt, cnt - getCnt
 }
 
+// Puts one time put at most N val to queue
+// Storage Array values should carry N val
 func (q *LFQueue) Puts(values []interface{}) (puts, count uint32) {
 	getPos := q.getPos.Load()
 	putPos := q.putPos.Load()
